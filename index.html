@@ -3,160 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor Despensa</title>
+    <title>Gestor Despensa Pro</title>
     <link rel="manifest" href="manifest.json">
-    <!-- Librerías Externas -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #2e7d32; --accent: #4caf50; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg); padding-bottom: 70px; }
+        :root { --primary: #2e7d32; --accent: #4caf50; --bg: #f8f9fa; --danger: #d32f2f; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg); padding-bottom: 80px; }
         
-        /* Header */
-        .app-bar { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .app-bar { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; }
+        .app-bar button { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
 
-        /* Vistas */
-        .view { display: none; padding: 15px; animation: fadeIn 0.3s; }
+        .view { display: none; padding: 15px; animation: fadeIn 0.2s; }
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Tarjetas de Inventario */
-        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; }
-        .product-img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-        .badge-danger { background: #ffebee; color: #c62828; }
-        .badge-warning { background: #fff3e0; color: #ef6c00; }
+        /* Tarjetas */
+        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        .product-img-thumb { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+        
+        /* Vista de Detalle */
+        .detail-img { width: 100%; max-height: 300px; object-fit: contain; background: #000; border-radius: 12px; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .info-row b { color: #555; }
 
-        /* Formulario */
-        label { display: block; margin-top: 10px; font-weight: bold; color: #555; }
-        input, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        .btn-scan { background: #1976d2; color: white; padding: 10px; border: none; border-radius: 8px; margin-top: 5px; width: 100%; }
-        .btn-save { background: var(--primary); color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; margin-top: 20px; font-size: 1.1rem; }
+        /* Alertas */
+        .alert-item { cursor: pointer; border-left: 5px solid transparent; }
+        .vencido { border-left-color: var(--danger); background: #fdecea; }
+        .proximo { border-left-color: #f9a825; background: #fffde7; }
 
-        /* Navegación Inferior */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
-        .nav-item { border: none; background: none; color: #757575; display: flex; flex-direction: column; align-items: center; font-size: 0.8rem; flex: 1; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item i { font-size: 1.4rem; margin-bottom: 4px; }
+        /* Botones */
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 15px; border-radius: 8px; width: 100%; font-size: 1rem; font-weight: bold; margin-top: 20px; }
+        .btn-back { background: #607d8b; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; margin-top: 10px; }
+        
+        /* Nav */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #ddd; z-index: 100; }
+        .nav-item { flex: 1; border: none; background: none; padding: 12px; color: #757575; display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; }
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        .nav-item i { font-size: 1.3rem; margin-bottom: 3px; }
 
-        /* Escáner */
         #scanner-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; }
-        #reader { width: 100%; height: 80%; }
     </style>
 </head>
 <body>
 
-    <div class="app-bar" id="app-title">Mi Despensa</div>
+    <div class="app-bar">
+        <span id="header-title">Mi Despensa</span>
+    </div>
 
-    <!-- Vista: Inventario -->
+    <!-- VISTA: BODEGA -->
     <section id="view-home" class="view active">
-        <h3>📦 Productos en Bodega</h3>
+        <h3 style="color: var(--primary);"><i class="fas fa-warehouse"></i> Productos en Bodega</h3>
         <div id="inventory-list"></div>
     </section>
 
-    <!-- Vista: Agregar -->
-    <section id="view-add" class="view">
-        <div class="card">
-            <h3>Registrar Compra</h3>
-            
-            <label>Código de Barras</label>
-            <div style="display: flex; gap: 5px;">
-                <input type="text" id="barcode" placeholder="Manual o escaneado">
-                <button class="btn-scan" onclick="startScanner()" style="width: 50px;"><i class="fas fa-barcode"></i></button>
-            </div>
-
-            <label>Fecha de Vencimiento</label>
-            <input type="date" id="expiryDate">
-
-            <label>Foto del Producto</label>
-            <input type="file" id="photo" accept="image/*" capture="environment">
-
-            <label>Notas / Nombre</label>
-            <textarea id="notes" rows="3" placeholder="Ej: Leche entera 1L"></textarea>
-
-            <button class="btn-save" onclick="saveProduct()">Guardar en Inventario</button>
+    <!-- VISTA: DETALLE (NUEVA) -->
+    <section id="view-detail" class="view">
+        <button class="btn-back" onclick="showView('home')"><i class="fas fa-arrow-left"></i> Volver a Bodega</button>
+        <div id="detail-content" class="card" style="margin-top: 15px;">
+            <!-- Contenido dinámico -->
         </div>
     </section>
 
-    <!-- Vista: Alertas -->
+    <!-- VISTA: AGREGAR -->
+    <section id="view-add" class="view">
+        <div class="card">
+            <h3>Registrar Producto</h3>
+            <label>Código de Barras</label>
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <input type="text" id="barcode" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;">
+                <button onclick="startScanner()" style="padding:10px; background:#1976d2; color:white; border:none; border-radius:8px;"><i class="fas fa-barcode"></i></button>
+            </div>
+            <label>Fecha de Vencimiento</label>
+            <input type="date" id="expiryDate" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;">
+            <label>Foto</label>
+            <input type="file" id="photo" accept="image/*" capture="environment" style="width:100%; margin-bottom:15px;">
+            <label>Nombre / Notas</label>
+            <textarea id="notes" rows="3" style="width:100%; border-radius:8px; border:1px solid #ccc;"></textarea>
+            <button onclick="saveProduct()" style="width:100%; background:var(--primary); color:white; padding:15px; border:none; border-radius:8px; margin-top:15px; font-size:1.1rem;">Guardar Producto</button>
+        </div>
+    </section>
+
+    <!-- VISTA: ALERTAS -->
     <section id="view-alerts" class="view">
-        <h3>⚠️ Alertas de Vencimiento</h3>
+        <h3 style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Productos Críticos</h3>
         <div id="alerts-list"></div>
     </section>
 
-    <!-- Contenedor del Escáner (Oculto por defecto) -->
     <div id="scanner-container">
         <div id="reader"></div>
-        <button class="btn-save" style="background: red;" onclick="stopScanner()">Cerrar Escáner</button>
+        <button onclick="stopScanner()" style="width:100%; padding:20px; background:var(--danger); color:white; border:none;">CANCELAR</button>
     </div>
 
-    <!-- Navegación Inferior -->
     <nav class="bottom-nav">
-        <button class="nav-item active" onclick="showView('home')">
-            <i class="fas fa-boxes-stacked"></i><span>Bodega</span>
-        </button>
-        <button class="nav-item" onclick="showView('add')">
-            <i class="fas fa-plus-circle"></i><span>Agregar</span>
-        </button>
-        <button class="nav-item" onclick="showView('alerts')">
-            <i class="fas fa-bell"></i><span>Alertas</span>
-        </button>
+        <button class="nav-item active" onclick="showView('home')"><i class="fas fa-boxes-stacked"></i>Bodega</button>
+        <button class="nav-item" onclick="showView('add')"><i class="fas fa-plus-circle"></i>Agregar</button>
+        <button class="nav-item" onclick="showView('alerts')"><i class="fas fa-bell"></i>Alertas</button>
     </nav>
 
     <script>
         let db;
         const html5QrCode = new Html5Qrcode("reader");
 
-        // Inicializar Base de Datos
         const request = indexedDB.open("DespensaDB", 1);
         request.onupgradeneeded = e => {
             db = e.target.result;
             db.createObjectStore("products", { keyPath: "id", autoIncrement: true });
         };
-        request.onsuccess = e => { 
-            db = e.target.result; 
-            renderInventory(); 
-            checkAlerts();
-        };
+        request.onsuccess = e => { db = e.target.result; renderInventory(); };
 
-        // Navegación entre vistas
         function showView(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(v => v.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            
+            // Marcar botón activo en nav
+            const navIdx = {home:0, add:1, alerts:2};
+            if(viewId in navIdx) document.querySelectorAll('.nav-item')[navIdx[viewId]].classList.add('active');
+
             if(viewId === 'home') renderInventory();
             if(viewId === 'alerts') checkAlerts();
         }
 
-        // Lógica del Escáner
-        function startScanner() {
-            document.getElementById('scanner-container').style.display = 'block';
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                decodedText => {
-                    document.getElementById('barcode').value = decodedText;
-                    stopScanner();
-                    Swal.fire('Escaneado', 'Código detectado con éxito', 'success');
-                }
-            );
-        }
-
-        function stopScanner() {
-            html5QrCode.stop();
-            document.getElementById('scanner-container').style.display = 'none';
-        }
-
-        // Guardar Producto
         function saveProduct() {
             const barcode = document.getElementById('barcode').value;
             const expiryDate = document.getElementById('expiryDate').value;
             const notes = document.getElementById('notes').value;
             const photoFile = document.getElementById('photo').files[0];
 
-            if (!expiryDate || !photoFile) {
-                return Swal.fire('Error', 'Fecha y foto son obligatorias', 'error');
-            }
+            if (!expiryDate || !photoFile) return Swal.fire('Error', 'Foto y Fecha son requeridas', 'error');
 
             const reader = new FileReader();
             reader.readAsDataURL(photoFile);
@@ -169,62 +145,57 @@
                     notes,
                     photo: reader.result
                 });
-                Swal.fire('Guardado', 'Producto agregado', 'success');
+                Swal.fire('Éxito', 'Producto guardado', 'success');
                 showView('home');
-                // Limpiar formulario
                 document.getElementById('barcode').value = '';
                 document.getElementById('notes').value = '';
             };
         }
 
-        // Renderizar Lista
         function renderInventory() {
             const list = document.getElementById('inventory-list');
             list.innerHTML = "";
-            const today = new Date().setHours(0,0,0,0);
-
             db.transaction("products").objectStore("products").openCursor().onsuccess = e => {
                 const cursor = e.target.result;
                 if (cursor) {
                     const p = cursor.value;
-                    const exp = new Date(p.expiryDate).getTime();
-                    
-                    // Solo mostrar si no ha vencido hace más de 1 día o si queremos gestionarlos
                     list.innerHTML += `
                         <div class="card">
-                            <img src="${p.photo}" class="product-img">
-                            <strong>${p.notes || 'Sin nombre'}</strong><br>
-                            <small>📦 Compra: ${p.purchaseDate}</small><br>
-                            <small>📅 Vence: ${p.expiryDate}</small><br>
-                            <button onclick="deleteProduct(${p.id})" style="background:#ff5252; color:white; border:none; padding:8px; border-radius:5px; margin-top:10px; width:100%">
-                                <i class="fas fa-trash"></i> Desechar / Consumido
-                            </button>
-                        </div>
-                    `;
+                            <img src="${p.photo}" class="product-img-thumb" onclick="openDetail(${p.id})">
+                            <div style="padding-top:10px;" onclick="openDetail(${p.id})">
+                                <strong>${p.notes || 'Sin nombre'}</strong><br>
+                                <small>📅 Vence: ${p.expiryDate}</small>
+                            </div>
+                        </div>`;
                     cursor.continue();
                 }
             };
         }
 
-        function deleteProduct(id) {
-            Swal.fire({
-                title: '¿Eliminar producto?',
-                text: "Esto lo quitará del inventario",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#2e7d32',
-                confirmButtonText: 'Sí, borrar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    db.transaction(["products"], "readwrite").objectStore("products").delete(id);
-                    renderInventory();
-                }
-            });
+        function openDetail(id) {
+            const transaction = db.transaction(["products"], "readonly");
+            const store = transaction.objectStore("products");
+            store.get(id).onsuccess = e => {
+                const p = e.target.result;
+                const detailDiv = document.getElementById('detail-content');
+                detailDiv.innerHTML = `
+                    <img src="${p.photo}" class="detail-img">
+                    <h2 style="margin:15px 0 5px 0;">${p.notes || 'Sin nombre'}</h2>
+                    <div class="info-row"><b>Código:</b> <span>${p.barcode || 'N/A'}</span></div>
+                    <div class="info-row"><b>Compra:</b> <span>${p.purchaseDate}</span></div>
+                    <div class="info-row"><b>Vencimiento:</b> <span style="color:var(--danger); font-weight:bold;">${p.expiryDate}</span></div>
+                    
+                    <button class="btn-delete" onclick="deleteProduct(${p.id})">
+                        <i class="fas fa-trash-alt"></i> DESECHAR / CONSUMIDO
+                    </button>
+                `;
+                showView('detail');
+            };
         }
 
         function checkAlerts() {
-            const alertsList = document.getElementById('alerts-list');
-            alertsList.innerHTML = "";
+            const list = document.getElementById('alerts-list');
+            list.innerHTML = "";
             const today = new Date();
             const threeDays = 3 * 24 * 60 * 60 * 1000;
 
@@ -234,20 +205,49 @@
                     const p = cursor.value;
                     const exp = new Date(p.expiryDate);
                     const diff = exp - today;
+                    let typeClass = "";
 
-                    if (diff < 0) {
-                        alertsList.innerHTML += `<div class="card badge-danger">🚨 VENCIDO: ${p.notes} (${p.expiryDate})</div>`;
-                    } else if (diff <= threeDays) {
-                        alertsList.innerHTML += `<div class="card badge-warning">⏳ Vence pronto: ${p.notes} (en 3 días o menos)</div>`;
+                    if (diff < 0) typeClass = "vencido";
+                    else if (diff <= threeDays) typeClass = "proximo";
+
+                    if (typeClass !== "") {
+                        list.innerHTML += `
+                            <div class="card alert-item ${typeClass}" onclick="openDetail(${p.id})">
+                                <strong>${typeClass === 'vencido' ? '🚨 VENCIDO' : '⏳ POR VENCER'}</strong><br>
+                                ${p.notes} - <small>${p.expiryDate}</small>
+                            </div>`;
                     }
                     cursor.continue();
                 }
             };
         }
-    </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+
+        function deleteProduct(id) {
+            Swal.fire({
+                title: '¿Confirmar acción?',
+                text: "El producto se eliminará de la bodega",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                confirmButtonColor: '#d32f2f'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    db.transaction(["products"], "readwrite").objectStore("products").delete(id);
+                    Swal.fire('Eliminado', '', 'success');
+                    showView('home');
+                }
+            });
+        }
+
+        function startScanner() {
+            document.getElementById('scanner-container').style.display = 'block';
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                text => { document.getElementById('barcode').value = text; stopScanner(); });
+        }
+
+        function stopScanner() {
+            html5QrCode.stop();
+            document.getElementById('scanner-container').style.display = 'none';
         }
     </script>
 </body>
