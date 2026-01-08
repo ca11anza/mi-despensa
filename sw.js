@@ -1,8 +1,10 @@
-const CACHE_NAME = 'despensa-v1';
+const CACHE_NAME = 'despensa-v2';
 const ASSETS = [
   'index.html',
   'manifest.json',
-  'https://unpkg.com/html5-qrcode'
+  'https://unpkg.com/html5-qrcode',
+  'https://cdn.jsdelivr.net/npm/sweetalert2@11',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
 ];
 
 self.addEventListener('install', e => {

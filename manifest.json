@@ -1,10 +1,10 @@
 {
-  "name": "Asistente Despensa",
+  "name": "Asistente Despensa Pro",
   "short_name": "Despensa",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#28a745",
+  "background_color": "#f8f9fa",
+  "theme_color": "#2e7d32",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png",
