@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de Despensa</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; margin: 0; padding: 20px; }
+        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        button { background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
+        input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .product-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+        .product-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; }
+        .vencido { color: red; font-weight: bold; }
+        .proximo { color: orange; font-weight: bold; }
+        #reader { width: 100%; max-width: 400px; margin: auto; }
+    </style>
+</head>
+<body>
+
+    <h2>📦 Mi Despensa Local</h2>
+
+    <!-- Formulario de Registro -->
+    <div class="card">
+        <h3>Registrar Producto</h3>
+        <div id="reader"></div>
+        <input type="text" id="barcode" placeholder="Código de barras (escaneado)">
+        <input type="date" id="expiryDate">
+        <input type="file" id="photo" accept="image/*" capture="environment">
+        <textarea id="notes" placeholder="Notas (nombre, cantidad...)"></textarea>
+        <button onclick="saveProduct()">Guardar Producto</button>
+    </div>
+
+    <!-- Lista de Inventario -->
+    <div class="card">
+        <h3>Inventario (Válidos y Próximos)</h3>
+        <div id="inventoryList"></div>
+    </div>
+
+    <script>
+        let db;
+        const request = indexedDB.open("DespensaDB", 1);
+
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            db.createObjectStore("products", { keyPath: "id", autoIncrement: true });
+        };
+
+        request.onsuccess = (e) => { db = e.target.result; loadInventory(); checkExpirations(); };
+
+        // Configuración Escáner
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            (decodedText) => {
+                document.getElementById('barcode').value = decodedText;
+                navigator.vibrate(100);
+            }
+        );
+
+        async function saveProduct() {
+            const barcode = document.getElementById('barcode').value;
+            const expiryDate = document.getElementById('expiryDate').value;
+            const notes = document.getElementById('notes').value;
+            const photoFile = document.getElementById('photo').files[0];
+
+            if (!expiryDate || !photoFile) return alert("Fecha y foto son obligatorias");
+
+            const reader = new FileReader();
+            reader.readAsDataURL(photoFile);
+            reader.onload = function () {
+                const transaction = db.transaction(["products"], "readwrite");
+                const store = transaction.objectStore("products");
+                store.add({
+                    barcode,
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    expiryDate,
+                    notes,
+                    photo: reader.result
+                });
+                location.reload();
+            };
+        }
+
+        function loadInventory() {
+            const list = document.getElementById('inventoryList');
+            list.innerHTML = "";
+            const today = new Date();
+
+            db.transaction("products").objectStore("products").openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    const p = cursor.value;
+                    const exp = new Date(p.expiryDate);
+                    const diffTime = exp - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    let statusClass = "";
+                    if (diffDays < 0) statusClass = "vencido";
+                    else if (diffDays <= 3) statusClass = "proximo";
+
+                    list.innerHTML += `
+                        <div class="product-item">
+                            <img src="${p.photo}">
+                            <div>
+                                <strong>${p.notes}</strong><br>
+                                <small>Vence: <span class="${statusClass}">${p.expiryDate}</span></small>
+                            </div>
+                            <button style="width:auto; background:red;" onclick="deleteProduct(${p.id})">🗑️</button>
+                        </div>
+                    `;
+                    cursor.continue();
+                }
+            };
+        }
+
+        function deleteProduct(id) {
+            db.transaction(["products"], "readwrite").objectStore("products").delete(id);
+            location.reload();
+        }
+
+        function checkExpirations() {
+            // Solicitar permiso de notificación
+            if (Notification.permission !== "granted") Notification.requestPermission();
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
